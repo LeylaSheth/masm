@@ -1,0 +1,89 @@
+Microsoft (R) Macro Assembler Version 5.10                  9/16/19 20:53:45
+                                                             Page     1-1
+
+
+       1 0000				datarea segment
+       2 0000  6D 6F 76 65 20 74	    string1 db 'move the cursor backwar
+					d.'
+       3       68 65 20 63 75 72	
+       4       73 6F 72 20 62 61	
+       5       63 6B 77 61 72 64	
+       6       2E			
+       7 0019  6D 6F 76 65 20 74	    string2 db 'move the cursor backwar
+					d.'
+       8       68 65 20 63 75 72	
+       9       73 6F 72 20 62 61	
+      10       63 6B 77 61 72 64	
+      11       2E			
+      12 0032  4D 61 74 63 68 0D	    mess1 db 'Match',13,10,'$'
+      13       0A 24			
+      14 003A  4E 6F 20 6D 61 74	    mess2 db 'No match!',13,10,'$'
+      15       63 68 21 0D 0A 24	
+      16 0046				datarea ends
+      17 0000				program segment 
+      18 0000				main proc far 
+      19				    assume cs:program, ds:datarea, es:d
+					atarea
+      20 0000				start:
+      21 0000  1E			    push ds
+      22 0001  2B C0			   sub ax,ax
+      23 0003  50			   push ax
+      24 0004  B8 ---- R		   mov ax,datarea
+      25 0007  8E D8			mov ds,ax
+      26 0009  8E C0			mov es,ax
+      27 000B  8D 36 0000 R		lea si,string1
+      28 000F  8D 36 0019 R		lea si,string2
+      29 0013  FC			cld
+      30 0014  B9 0019			mov cx,25
+      31 0017  F3/ A6			repz cmpsb
+      32 0019  74 06			jz match
+      33 001B  8D 16 003A R		lea dx,mess2
+      34 001F  EB 04			jmp short disp
+      35 0021				match:
+      36 0021  8D 16 0032 R		lea dx,mess1
+      37 0025				disp:
+      38 0025  B4 09			mov ah,09
+      39 0027  CD 21			int 21h
+      40 0029  CB			ret 
+      41 002A				main endp
+      42 002A				program ends
+      43				end start
+Microsoft (R) Macro Assembler Version 5.10                  9/16/19 20:53:45
+                                                             Symbols-1
+
+
+Segments and Groups:
+
+                N a m e         	Length	 Align	Combine Class
+
+DATAREA  . . . . . . . . . . . .  	0046	PARA	NONE	
+PROGRAM  . . . . . . . . . . . .  	002A	PARA	NONE	
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+DISP . . . . . . . . . . . . . .  	L NEAR	0025	PROGRAM
+
+MAIN . . . . . . . . . . . . . .  	F PROC	0000	PROGRAM	Length = 002A
+MATCH  . . . . . . . . . . . . .  	L NEAR	0021	PROGRAM
+MESS1  . . . . . . . . . . . . .  	L BYTE	0032	DATAREA
+MESS2  . . . . . . . . . . . . .  	L BYTE	003A	DATAREA
+
+START  . . . . . . . . . . . . .  	L NEAR	0000	PROGRAM
+STRING1  . . . . . . . . . . . .  	L BYTE	0000	DATAREA
+STRING2  . . . . . . . . . . . .  	L BYTE	0019	DATAREA
+
+@CPU . . . . . . . . . . . . . .  	TEXT  0101h		
+@FILENAME  . . . . . . . . . . .  	TEXT  test1		
+@VERSION . . . . . . . . . . . .  	TEXT  510		
+
+
+     33 Source  Lines
+     33 Total   Lines
+     15 Symbols
+
+  47522 + 463833 Bytes symbol space free
+
+      0 Warning Errors
+      0 Severe  Errors
