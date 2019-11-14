@@ -2162,3 +2162,484 @@ nonneg: call dispuid ;
 
 与高级语言不同，满足则跳转
 
+
+
+### 双分支结构
+
+ 双分支程序结构有两个分支
+
+* 条件为真，转移：执行分支体2
+* 条件为假，顺序：执行分支体1
+
+**分支体1最后一定要有JMP指令跳过分支体2**，没有指令就会顺序执行就不太对
+
+
+
+显示数据最高位程序
+
+```assembly
+mov bx,wvar ;数据来自变量
+shl bx,1 ;bx最高位移入CF标志
+jc one ;cf=1，最高位为1，转移
+mov al, '0' ;cf=0，最高位为0
+jmp two ;一定要跳过另一个分支
+one: mov al,"1" ;al=1
+two: call dispc ;显示
+```
+
+
+
+## 循环指令
+
+### `LOOP`指令
+
+`LOOP label`
+
+功能1：cx <-cx-1	相当于`DEC CX`
+
+功能2：若cx$\neq$0，转移到LABEL	相当于`JNZ label`
+
+否则顺序执行
+
+> 寄存器cx是默认的计数器，目标地址采用相对短转移  
+
+
+
+loop指令就相当于
+
+```assembly
+dec cx
+jnz label
+```
+
+
+
+### LOOP指令的应用
+
+循环指令，用于实现减量计数的循环控制
+
+```assembly
+			mov cx, num ;设置循环的计数初值num
+label: ... ;循环体
+			loop label ;cx--,未到0继续循环，到0循环结束，顺序执行
+```
+
+```flow
+op1=>operation: 设置cx
+cond1=>condition: loop
+op2=>operation: 循环体
+e=>end: 结束框
+op1->op2->cond1
+cond1(yes)->op2
+cond1(no)->e
+```
+
+
+
+> LOOP指令是先减1后判断
+
+```assembly
+		mov cx,0 ;设置循环的计数初值
+label: loop label ;ex-1,未到0继续循环
+```
+
+这里要知道的是，这是个先减1，后继续循环
+
+这里的循环次数是 $2^{32}$次
+
+
+
+### JECXZ指令
+
+未避免计数初值为0可能导致的程序错误
+
+设计理JECXZ指令
+
+```assembly
+JECXZ label
+;cx=0,转移到label，否则顺序执行
+```
+
+
+
+```flow
+st=>start: 开始框
+op1=>operation: 设置cx
+cond1=>condition: 判断框(是或否?)
+cond2=>condition: loop
+op2=>operation: 循环体
+e=>end: 结束框
+st->op1->cond1(no)->op2->cond2(no)->e
+cond2(yes)(botton)->cond1
+cond1(yes)->e
+```
+
+### 数组求和程序
+
+```assembly
+        .data
+        array word 136,-138,133,120,-161 ;数组
+        sum word ?
+        ;元素逐个相加，作为循环体
+        ;数组个数已知，可用LOOP指令控制计数
+        mov cx, lengthof array ;cx=array元素个数
+        xor ax, ax ;求和初值为0
+        mov bx, offset array;指向首个元素
+again:  add ax,[bx];求和
+        add bx, 2;指向下一个数组元素
+        loop again
+        mov sum, ax;保存结果
+```
+
+
+
+#### 逐个寻址数组元素
+
+* 寻址存储器内的操作实，使用存储器寻址
+* 存储器的直接寻址使用于访问单个变量
+  * 但不方便改变地址，所以不适合访问数组元素
+* 存储器的寄存器间接、相对、变址都使用寄存器
+  * 通过修改寄存器内容改变地址，可方便访问数组元素
+
+
+
+寄存器的变址寻址
+
+```assembly
+        mov bx,0;指向首个元素
+again:  add ax, array[bx*(type array)];求和，带比例的变址
+        add bx,1 ;指向下一个数组元素
+```
+
+
+
+### 循环程序结构
+
+1. 循环初始——为开始循环准备必要条件
+
+   设置循环次数、循环体需要的初始值等
+
+2. 循环体——重复执行的程序代码
+
+   其中包括对循环条件的修改等
+
+3. 循环控制——判断循条件是否成立
+
+   决定是否继续循环
+
+
+
+> 计数控制循环
+>
+> 通过次数控制循环
+>
+> * 计数可以减量进行
+> * 也可增量
+> * 类似于for
+>
+> 利用loop减量进行循环，对应do
+
+
+
+> 条件控制循环
+>
+> 根据条件决定是否进行循环
+>
+> * 使用比较测试等指令设置状态标志、产生条件
+> * 使用条件转移指令实现循环空
+> * 常需要使用无条件转移指令配合实现循环
+>
+> 先判断后循环
+>
+> * 类似while
+
+### 计数控制循环
+
+通过次数来控制循环
+
+常见的是先循环后判断的循环结构
+
+
+
+求最大值
+
+```assembly
+.data
+array word -3,0,20,900,-56
+count = lengthof array ;数据元素个数
+max word ? ;存放最大值
+;从第一个元素开始逐个比较，保留最大值
+.code
+mov cx,count-1 ;元素个数-1就是循环次数
+mov si,offset array
+mov ax,[si] ;第一个元素暂时存为最大值
+
+again: add si, 2
+			 cmp ax, [si] ;比较
+			 jpe next ;已经是则继续
+			 ;循环体包含了一个分支程序
+			 mov ax, [si] ;不是，顺序执行，取得更大的数据
+next: loop again ;计数循环
+			mov max, ax;保存最大值
+```
+
+```assembly
+        ;改成一个相对寻址
+        mov cx,count-1 ;循环次数
+        xor si,si
+        mov ax,array[si];
+again: add si,2
+        cmp ax,array[si];
+        jge next
+        mov ax,array[si];
+next: loop again
+        mov max,ax
+```
+
+
+
+
+
+### 条件控制循环
+
+根据条件决定是否进行循环
+
+* 使用比较、测试等指令设置状态标志、产生条件
+* 使用条件转移指令实现循环控制
+* 常需要使用无条件转移指令配合实现循环
+
+常见的是“先判断，后循环”结构
+
+#### 统计以0结尾的字符串的个数
+
+```assembly
+.data
+string byte "Do you have fun?",0 ;以0结尾的字符串
+.code
+xor bx,bx ;记录字符个数，也用作指向字符的指针
+;字符不为0，个数+1，字符是0，字符串结束
+again: mov al, string[bx];
+      cmp al,0
+      jz done ;满足则跳转
+      inc bx ;个数+1
+      jmp again ;继续循环
+done: mov ax,bx ;显示个数
+      call dispuid
+```
+
+
+
+#### 先行判断的条件控制循环类似双分支结构
+
+顺序执行的分支 $\Rightarrow$ 需要重复执行多次的循环体
+
+另一个分支 $\Rightarrow$ 用于跳出循环
+
+
+
+```assembly
+again: cmp string[bx],0
+        jz done
+        inc bx
+        jmp again
+done:
+```
+
+
+
+双分支结构与“先判断后循环”结构
+
+双分支：条件判断，yes跳转到分支体2，no顺序执行到分支体1
+
+循环：满足条件跳转，不满足条件顺序执行循环体，在循环体中跳转到条件的判断
+
+
+
+
+
+#### 先行循环的条件控制循环类似单分支结构
+
+分支体 $\Rightarrow$ 就是循环体
+
+顺序执行 $\Rightarrow$ 就跳出循环
+
+```assembly
+again: inc bx
+			 cmp string[bx],0
+			 jnz again
+			 ...;退出循环
+```
+
+这是一个先循环后判断，满足条件则继续循环，不满足则退出
+
+
+
+## 子程序的调用
+
+### 子程序指令
+
+* 主程序（调用程序）
+
+  执行调用指令`CALL`
+
+  调用子程序
+
+* 子程序（被调用程序）
+
+  执行返回指令`RET`
+
+  返回主程序
+
+  返回到CALL指令的下一条指令处
+
+#### 子程序调用指令CALL
+
+CALL指令用在主程序中，实现子程序的调用
+
+1. 将下一条指令的地址压入堆栈（顶部）
+2. 转移到目标地址
+
+```assembly
+CALL label ;调用标号指定的子程序
+CALL reg16 ;调用寄存器指定地址的子程序
+CALL mem48/mem32/mem16 ;调用存储单元指定地址的子程序
+```
+
+> CALL分成段内调用（近调用）和段间调用（远调用）
+>
+> 目标地址支持相对寻址、直接寻址或间接寻址
+
+
+
+#### 段内CALL和RET指令
+
+```assembly
+CALL label
+next:...
+;相当于
+push next ;入栈返回地址sp=sp-4，ss:[sp]=ip
+jmp label ;转移目标地址：ip=ip+偏移量
+
+RET ;栈顶数据出栈到指令指针寄存器ip
+;ip=ss:[sp],sp=sp+4
+;数据进入ip，就作为下一条要执行指令的地址
+```
+
+
+
+### 子程序调用
+
+主程序遇到CALL name 跳转到名字为name的子程序，在子程序执行到最后遇到RET转回到主程序，进行下一条指令 
+
+```assembly
+;代码段，主程序
+mov ax,1
+mov bp,5  
+call subp
+retp1: mov cx,3
+retp2: mov dx,3
+call disprd
+
+;子程序
+subp proc ;过程定义，过程名为subp
+      push bp
+      mov bp,sp
+      mov si,[bp+4] ;si=CALL下条指令的偏移地址
+      mov di,offset retp2
+      mov bx,2
+      pop bp
+      ret
+subp endp ；过程结束
+```
+
+
+
+### 子程序设计
+
+同主程序
+
+* RET指令返回主程序，CALL指令调用子程序
+* 利用过程定义，获得子程序名和调用属性
+* 压入和弹出操作要成对使用，保持堆栈平衡
+* 子程序开始保护寄存器，返回前相应恢复
+* 安排在代码段的主程序之外
+* 子程序允许嵌套和递归
+
+#### 过程定义伪指令
+
+```assembly
+过程名 PROC
+			....;过程体
+过程名 ENDP
+;过程名为符合语法的标识符
+```
+
+MASM会根据存储模型等信息确定子程序的远近调用，并相应产生调用、返回指令
+
+
+
+#### 子程序框架
+
+```assembly
+标识符 proc ;过程定义（子程序开始）
+			push ...1 ;保护寄存器
+			push ...2
+			...				;子程序体
+			pop ...2 ;恢复寄存器
+			pop ...1
+			ret	;子程序返回
+标识符 endp ;过程（子程序结束）
+```
+
+子程序和主程序共用一套处理器，可能会冲掉主程序的内容，为了保证主程序的状态，寄存器的内容不改变，子程序需要做一些处理，保护寄存器，把它放入堆栈，有push指令，pop成对出现用于保护，恢复寄存器的时候，是一个相反的顺序，堆栈先进后出
+
+
+
+回车换行功能
+
+```assembly
+mov al,0dh ;输出回车字符
+call dispc
+mov al,0ah ;输出换行字符
+call dispc
+;子程序中调用子程序，实现子程序嵌套
+```
+
+
+
+来写成一个子程序
+
+```assembly
+dpcrlf proc ;回城换行子程序
+      push ax;保护寄存器
+      mov al,0dh;
+      call dispc
+      mov al,0ah ;输出换行字符
+      call dispc
+      pop ax;恢复寄存器
+      ret;子程序返回
+dpcrlf endp;子程序结束
+```
+
+
+
+### 参数传递
+
+主程序与子程序之间通过参数传递建立联系
+
+* 入口参数(输入参数)：主程序——>子程序
+* 出口参数(输出参数)：子程序——>主程序
+
+参数的具体内容
+
+* 数据本身(传递数值)
+* 数据的存储地址(传递地址，传递引用)
+
+参数传递的方法
+
+* 通用寄存器
+* 共享变量
+* 堆栈
+
+
+
